@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using API.Data;
+using API.DTOs;
 using API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,28 +33,38 @@ namespace API.Controllers
         
         
 
-        [HttpPost("create")]
-        public async Task<ActionResult<Product>> CreateProduct(Product product)
+        [HttpPost("createProduct")]
+        public async Task<ActionResult<ProductDto>> CreateProduct([FromBody]ProductDto productDto)
         {
-            if(await ProductExist(product.Name)) return BadRequest("This Product already in database");
+            if(await ProductExist(productDto.Name)) return BadRequest("This Product already in database");
 
             var pro = new Product
             {
-                Name = product.Name.ToLower()
+                Name = productDto.Name.ToLower(),
+                CategoryId = productDto.CategoryId
             };
+            
+            var cates = await _context.Categories.FindAsync(pro.CategoryId);
+
+            if(cates == null) return BadRequest("We cant find any category in that id");
+
+            cates.Products.Add(pro);
 
             _context.Products.Add(pro);
 
             await _context.SaveChangesAsync();
 
-            return pro;
+            return new ProductDto{
+                Name = pro.Name,
+                CategoryId = pro.CategoryId,
+            };
         }
         private async Task<bool> ProductExist(string productName)
         {
             return await _context.Products.AnyAsync(x=>x.Name == productName.ToLower());
         }
 
-        [HttpDelete]
+        [HttpDelete("remove/{id}")]
         public async Task<ActionResult> RemoveProduct(int id)
         {
             var pro = _context.Products.Find(id);
@@ -65,6 +76,26 @@ namespace API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok("Product Deleted from Database");
+        }
+
+        [HttpPut("updateProduct/{id}")]
+        public async Task<ActionResult> UpdateProduct(int id,[FromBody]ProductDto productDto)
+        {
+            var pro = _context.Products.Find(id);
+
+            if(pro == null) return BadRequest($"Cant Find any product in that {id}");
+
+            if(pro.Name == productDto.Name && pro.CategoryId == productDto.CategoryId) return BadRequest("You cant change anything here");
+
+            pro.Name = productDto.Name;
+            pro.CategoryId = productDto.CategoryId;
+            
+             
+            _context.Products.Update(pro);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Product Updated succesfully");
         }
 
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using API.Data;
+using API.DTOs;
 using API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,39 +33,59 @@ namespace API.Controllers
         
         
 
-         [HttpPost("create")]
-        public async Task<ActionResult<Category>> CreateCategory(Category category)
+        [HttpPost("createCategory")]
+        public async Task<ActionResult<CategoryReturnDto>> CreateCategory([FromBody]CategoryReturnDto categoryDto)
         {
-            if(await CategoryExist(category.Name)) return BadRequest("This Category already have in database");
+            if(await CategoryExist(categoryDto.Name)) return BadRequest("This Category already have in database");
 
             var cat = new Category
             {
-                Name = category.Name.ToLower()
+                Name = categoryDto.Name.ToLower()
             };
 
             _context.Categories.Add(cat);
 
             await _context.SaveChangesAsync();
 
-            return cat;
+            return new CategoryReturnDto{
+                Name = cat.Name
+            };
         }
         private async Task<bool> CategoryExist(string categoryName)
         {
-            return await _context.Products.AnyAsync(x=>x.Name == categoryName.ToLower());
+            return await _context.Categories.AnyAsync(x=>x.Name == categoryName.ToLower());
         }
 
-        [HttpDelete]
+        [HttpDelete("remove/{id}")]
         public async Task<ActionResult> RemoveCategory(int id)
         {
             var cat = _context.Categories.Find(id);
 
-            if(cat == null) return BadRequest($"Cant Find any product in that {id}");
+            if(cat == null) return BadRequest($"Cant Find any catagory in that {id}");
             
             _context.Categories.Remove(cat);
 
             await _context.SaveChangesAsync();
 
-            return Ok("Product Deleted from Database");
+            return Ok("Category Deleted from Database");
+        }
+
+         [HttpPut("updateCategory/{id}")]
+        public async Task<ActionResult> UpdateCategory(int id,[FromBody]CategoryReturnDto categoryReturnDto)
+        {
+            var cat = _context.Categories.Find(id);
+
+            if(cat == null) return BadRequest($"Cant Find any Category in that {id}");
+            
+            if(cat.Name == categoryReturnDto.Name) return BadRequest("You cant change anything here");
+
+            cat.Name = categoryReturnDto.Name;            
+             
+            _context.Categories.Update(cat);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Category Updated succesfully");
         }
 
         
