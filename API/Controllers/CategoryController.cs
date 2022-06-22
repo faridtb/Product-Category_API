@@ -40,7 +40,7 @@ namespace API.Controllers
 
             var cat = new Category
             {
-                Name = categoryDto.Name.ToLower()
+                Name = categoryDto.Name.ToLower(),
             };
 
             _context.Categories.Add(cat);
